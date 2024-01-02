@@ -1,0 +1,158 @@
+plugins {
+	id 'eclipse'
+	id 'maven-publish'
+	id 'net.minecraftforge.gradle' version "${forge_gradle_version}"
+	id 'org.parchmentmc.librarian.forgegradle' version "${parchent_librarian_version}.+"
+    id 'com.matthewprenger.cursegradle' version "${cursegradle_version}"
+}
+
+libsDirName = "../output"
+distsDirName = "../output"
+
+group = industrialelectricity_group
+version = "${minecraft_version}-" + industrialelectricity_version
+
+base {
+
+	archivesName = industrialelectricity_name
+
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+println('Java: ' + System.getProperty('java.version') + ' JVM: ' + System.getProperty('java.vm.version') + '(' + System.getProperty('java.vendor') + ') Arch: ' + System.getProperty('os.arch'))
+minecraft {
+   
+    mappings channel: 'parchment', version: "${parchment_version}-${minecraft_version}"
+    accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
+    runs {
+        client {
+            workingDirectory project.file('run')
+
+            property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
+
+            property 'forge.logging.console.level', 'debug'
+
+            mods {
+                industrialelectricity {
+                    source sourceSets.main
+                }
+            }
+        }
+
+        server {
+            workingDirectory project.file('run')
+
+            // Recommended logging data for a userdev environment
+            property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
+
+            // Recommended logging level for the console
+            property 'forge.logging.console.level', 'debug'
+
+            mods {
+                industrialelectricity {
+                    source sourceSets.main
+                }
+            }
+        }
+
+        data {
+            workingDirectory project.file('run')
+
+            // Recommended logging data for a userdev environment
+            property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
+
+            // Recommended logging level for the console
+            property 'forge.logging.console.level', 'debug'
+
+            args '--mod', 'industrialelectricity', '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+
+            mods {
+                industrialelectricity {
+                    source sourceSets.main
+                }
+            }
+        }
+    }
+}
+
+sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+dependencies {
+
+    def Folder2 = new File("libs")
+    if(Folder2.exists()) {
+        implementation fileTree(Folder2)
+    }
+	minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+    compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-common-api:${jei_version}")
+    compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}")
+    runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
+}
+
+repositories {
+	mavenCentral()
+	maven {
+	    // location of the maven that hosts JEI files since January 2023
+	    name = "Jared's maven"
+	    url = "https://maven.blamejared.com/"
+	}
+	maven {
+   		// location of a maven mirror for JEI files, as a fallback
+    	name = "ModMaven"
+    	url = "https://modmaven.dev"
+  	}
+
+}
+
+// Example for how to get properties into the manifest for reading by the runtime..
+tasks.named('jar', Jar).configure {
+    manifest {
+        attributes([
+            "Specification-Title": "industrialelectricity",
+            "Specification-Vendor": "skip999",
+            "Specification-Version": "1", // We are version 1 of ourselves
+            "Implementation-Title": project.name,
+            "Implementation-Version": project.jar.archiveVersion,
+            "Implementation-Vendor" :"skip999",
+            "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        ])
+    }
+    
+    finalizedBy('reobfJar') 
+    
+}
+
+tasks.register('sourcesJar', Jar).configure {
+	dependsOn classes
+	from sourceSets.main.allSource
+	archiveClassifier = 'sources'
+}
+
+tasks.register('deobfJar', Jar).configure {
+	from sourceSets.main.output
+	archiveClassifier = 'deobf'
+}
+
+tasks.named('publish').configure {
+	dependsOn 'reobfJar'
+}
+
+artifacts {
+	archives sourcesJar
+	archives deobfJar
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifact jar
+        }
+    }
+    repositories {
+        maven {
+            url "file:///${project.projectDir}/mcmodsrepo"
+        }
+    }
+}
+

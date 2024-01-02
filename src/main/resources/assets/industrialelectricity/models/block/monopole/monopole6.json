@@ -1,0 +1,82 @@
+{
+	"credit": "skip999",
+	"parent" : "block/cube_all",
+	"texture_size": [
+		64,
+		64
+	],
+	"textures": {
+		"0": "industrialelectricity:block/monopole/monopole6",
+		"particle": "industrialelectricity:block/monopole/monopole6"
+	},
+	"elements": [
+		{
+			"from": [
+				2.5,
+				-16,
+				2.5
+			],
+			"to": [
+				13.5,
+				32,
+				13.5
+			],
+			"faces": {
+				"north": {
+					"uv": [
+						2.75,
+						2.75,
+						5.5,
+						14.75
+					],
+					"texture": "#0"
+				},
+				"east": {
+					"uv": [
+						0,
+						2.75,
+						2.75,
+						14.75
+					],
+					"texture": "#0"
+				},
+				"south": {
+					"uv": [
+						8.25,
+						2.75,
+						11,
+						14.75
+					],
+					"texture": "#0"
+				},
+				"west": {
+					"uv": [
+						5.5,
+						2.75,
+						8.25,
+						14.75
+					],
+					"texture": "#0"
+				},
+				"up": {
+					"uv": [
+						5.5,
+						2.75,
+						2.75,
+						0
+					],
+					"texture": "#0"
+				},
+				"down": {
+					"uv": [
+						8.25,
+						0,
+						5.5,
+						2.75
+					],
+					"texture": "#0"
+				}
+			}
+		}
+	]
+}
