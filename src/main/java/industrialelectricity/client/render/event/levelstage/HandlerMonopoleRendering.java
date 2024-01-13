@@ -4,9 +4,11 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.joml.AxisAngle4d;
+import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.datafixers.util.Pair;
@@ -25,6 +27,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.BlockPos;
@@ -93,7 +96,7 @@ public class HandlerMonopoleRendering extends AbstractLevelStageHandler {
 		BakedModel polearm = getModel(minecraft, ClientRegister.MODEL_MONOPOLE_ARM);
 		BakedModel poleinsulator = getModel(minecraft, ClientRegister.MODEL_MONOPOLE_INSULATOR);
 
-		VertexConsumer consumer = buffer.getBuffer(RenderType.solid());
+		VertexConsumer consumer = buffer.getBuffer(RenderType.entityCutoutNoCull(TextureAtlas.LOCATION_BLOCKS, false));
 		
 		
 
@@ -115,18 +118,21 @@ public class HandlerMonopoleRendering extends AbstractLevelStageHandler {
 				}
 
 				stack.pushPose();
+				
+				RenderSystem.enableCull();
+				RenderSystem.enableDepthTest();
 
 				if (minecraft.getEntityRenderDispatcher().shouldRenderHitBoxes()) {
 
 					data.sheildWireAABBs.forEach(pair -> {
 
-						RenderingUtils.renderFilledBox(stack, consumer, pair.getSecond(), 1.0F, 0, 0, 1.0F, u0White, v0White, u1White, v1White, LevelRenderer.getLightColor(minecraft.level, pos), OverlayTexture.NO_OVERLAY);
+						renderSegment(stack, consumer, pair.getSecond(), 1.0F, 0, 0, 1.0F, u0White, v0White, u1White, v1White, LevelRenderer.getLightColor(minecraft.level, pos), OverlayTexture.NO_OVERLAY);
 
 					});
 
 					data.mainConductorAABBs.forEach(pair -> {
 
-						RenderingUtils.renderFilledBox(stack, consumer, pair.getSecond(), 1.0F, 0, 0, 1.0F, u0White, v0White, u1White, v1White, LevelRenderer.getLightColor(minecraft.level, pos), OverlayTexture.NO_OVERLAY);
+						renderSegment(stack, consumer, pair.getSecond(), 1.0F, 0, 0, 1.0F, u0White, v0White, u1White, v1White, LevelRenderer.getLightColor(minecraft.level, pos), OverlayTexture.NO_OVERLAY);
 
 					});
 
@@ -143,8 +149,12 @@ public class HandlerMonopoleRendering extends AbstractLevelStageHandler {
 					data.mainConductorAABBs.forEach(pair -> {
 
 						if (frustum.isVisible(pair.getSecond())) {
+							
+							
 
-							RenderingUtils.renderFilledBox(stack, consumer, pair.getFirst(), CABLE_COLOR.rFloat(), CABLE_COLOR.gFloat(), CABLE_COLOR.bFloat(), CABLE_COLOR.aFloat(), u0White, v0White, u1White, v1White, LevelRenderer.getLightColor(minecraft.level, pos), OverlayTexture.NO_OVERLAY);
+							renderSegment(stack, consumer, pair.getFirst(), CABLE_COLOR.rFloat(), CABLE_COLOR.gFloat(), CABLE_COLOR.bFloat(), CABLE_COLOR.aFloat(), u0White, v0White, u1White, v1White, LevelRenderer.getLightColor(minecraft.level, pos), OverlayTexture.NO_OVERLAY);
+							
+							
 
 						}
 
@@ -154,11 +164,14 @@ public class HandlerMonopoleRendering extends AbstractLevelStageHandler {
 
 						if (frustum.isVisible(pair.getSecond())) {
 
-							RenderingUtils.renderFilledBox(stack, consumer, pair.getFirst(), CABLE_COLOR.rFloat(), CABLE_COLOR.gFloat(), CABLE_COLOR.bFloat(), CABLE_COLOR.aFloat(), u0White, v0White, u1White, v1White, LevelRenderer.getLightColor(minecraft.level, pos), OverlayTexture.NO_OVERLAY);
+							renderSegment(stack, consumer, pair.getFirst(), CABLE_COLOR.rFloat(), CABLE_COLOR.gFloat(), CABLE_COLOR.bFloat(), CABLE_COLOR.aFloat(), u0White, v0White, u1White, v1White, LevelRenderer.getLightColor(minecraft.level, pos), OverlayTexture.NO_OVERLAY);
 
 						}
 
 					});
+					
+					RenderSystem.disableCull();
+					RenderSystem.disableDepthTest();
 
 					stack.popPose();
 
@@ -180,7 +193,7 @@ public class HandlerMonopoleRendering extends AbstractLevelStageHandler {
 
 		});
 
-		buffer.endBatch(RenderType.solid());
+		buffer.endBatch(RenderType.entityCutoutNoCull(TextureAtlas.LOCATION_BLOCKS, false));
 
 		monopolesToRender.forEach((pos, data) -> {
 
@@ -380,6 +393,41 @@ public class HandlerMonopoleRendering extends AbstractLevelStageHandler {
 
 	}
 
+	private void renderSegment(PoseStack stack, VertexConsumer builder, AABB box, float r, float g, float b, float a, float uMin, float vMin, float uMax, float vMax, int light, int overlay) {
+		Matrix4f matrix4f = stack.last().pose();
+		Matrix3f matrix3f = stack.last().normal();
+
+		float minX = (float) box.minX;
+		float minY = (float) box.minY;
+		float minZ = (float) box.minZ;
+		float maxX = (float) box.maxX;
+		float maxY = (float) box.maxY;
+		float maxZ = (float) box.maxZ;
+		
+		float deltaX = (maxX - minX) / 2.0F;
+		float deltaY = (maxY - minY) / 2.0F;
+		float deltaZ = (maxZ - minZ) / 2.0F;
+		
+		float midX = minX + deltaX;
+		float midY = minY + deltaY;
+		float midZ = minZ + deltaZ;
+
+		builder.vertex(matrix4f, maxX, midY, minZ).color(r, g, b, a).uv(uMin, vMin).overlayCoords(overlay).uv2(light).normal(matrix3f, 0, 1, 0).endVertex();
+		builder.vertex(matrix4f, minX, midY, minZ).color(r, g, b, a).uv(uMax, vMin).overlayCoords(overlay).uv2(light).normal(matrix3f, 0, 1, 0).endVertex();
+		builder.vertex(matrix4f, minX, midY, maxZ).color(r, g, b, a).uv(uMax, vMax).overlayCoords(overlay).uv2(light).normal(matrix3f, 0, 1, 0).endVertex();
+		builder.vertex(matrix4f, maxX, midY, maxZ).color(r, g, b, a).uv(uMin, vMax).overlayCoords(overlay).uv2(light).normal(matrix3f, 0, 1, 0).endVertex();
+
+		builder.vertex(matrix4f, midX, maxY, minZ).color(r, g, b, a).uv(uMin, vMin).overlayCoords(overlay).uv2(light).normal(matrix3f, 1, 0, 0).endVertex();
+		builder.vertex(matrix4f, midX, maxY, maxZ).color(r, g, b, a).uv(uMax, vMin).overlayCoords(overlay).uv2(light).normal(matrix3f, 1, 0, 0).endVertex();
+		builder.vertex(matrix4f, midX, minY, maxZ).color(r, g, b, a).uv(uMax, vMax).overlayCoords(overlay).uv2(light).normal(matrix3f, 1, 0, 0).endVertex();
+		builder.vertex(matrix4f, midX, minY, minZ).color(r, g, b, a).uv(uMin, vMax).overlayCoords(overlay).uv2(light).normal(matrix3f, 1, 0, 0).endVertex();
+		
+		builder.vertex(matrix4f, maxX, maxY, midZ).color(r, g, b, a).uv(uMin, vMin).overlayCoords(overlay).uv2(light).normal(matrix3f, 0, 0, 1).endVertex();
+		builder.vertex(matrix4f, minX, maxY, midZ).color(r, g, b, a).uv(uMax, vMin).overlayCoords(overlay).uv2(light).normal(matrix3f, 0, 0, 1).endVertex();
+		builder.vertex(matrix4f, minX, minY, midZ).color(r, g, b, a).uv(uMax, vMax).overlayCoords(overlay).uv2(light).normal(matrix3f, 0, 0, 1).endVertex();
+		builder.vertex(matrix4f, maxX, minY, midZ).color(r, g, b, a).uv(uMin, vMax).overlayCoords(overlay).uv2(light).normal(matrix3f, 0, 0, 1).endVertex();
+	}
+	
 	private BakedModel getModel(Minecraft minecraft, ResourceLocation loc) {
 		return minecraft.getModelManager().getModel(loc);
 	}
